@@ -1,0 +1,74 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container">
+<div class="card">
+        <div class="card-body">
+      <div id="message"></div>  
+      <h2 class="mb-4">Upload the Data(csv or xlsx)</h2>
+      <form action="/upload_dataset" method="post" enctype="multipart/form-data" id="upload-form">
+        <div class="note">
+          <h3>Assumptions:</h3>
+          <ol>
+            <li>
+              The file should have column names in this format: &lt;column_name&gt;:&lt;column_data_type&gt;
+            </li>
+            <li>
+              Supported data types: numeric,nominal,ordinal
+            </li>
+          </ol>
+        </div>
+        <div class="form-group">
+          <label for="dataset"><i class="fas fa-database"></i> Choose Dataset:</label>
+          <div class="custom-file">
+            <input type="file" class="custom-file-input" id="dataset" name="dataset">
+            <label class="custom-file-label" for="dataset"><i class="fas fa-file-upload"></i> Choose file</label>
+          </div>
+        </div>
+        <div class="form-group">
+          <label for="name"><i class="fas fa-info-circle"></i> Name:</label>
+          <input type="text" class="form-control" id="name" name="name">
+        </div>
+        <div class="form-group">
+          <label for="problem-name-select">Problem:</label>
+        <select class="form-control" id="problem-name-select" name="problem_name" multiple>
+            {% for row in problem %}
+            <option>{{ row }}</option>
+            {% endfor %}
+            </select>
+          
+        </div>
+        <div class="form-group">
+          <label for="type"><i class="fas fa-flag"></i> Type:</label>
+          <select class="form-control" id="type" name="type">
+            <option value="user">User</option>
+            <option value="benchmark">Benchmark</option>
+          </select>
+        </div>
+           <div class="form-group">
+          <label for="ground-truth"><i class="fas fa-database"></i> Upload Ground Truth (optional):</label>
+          <div class="custom-file">
+            <input type="file" class="custom-file-input" id="ground-truth" name="ground_truth">
+            <label class="custom-file-label" for="ground-truth" id="ground-truth-label"><i class="fas fa-file-upload"></i> Choose file</label>
+          </div>
+        </div>
+        <div class="form-group">
+  <label for="sample-file"><i class="fas fa-file-download"></i> Download sample data and column orderFile:</label>
+  <div class="row">
+    <div class="col"><a href="static/sample.csv" download>sample.csv</a></div>
+    <div class="col"><a href="static/column-order.csv" download>column-order.csv</a></div>
+</div>
+</div>
+        <div class="form-group">
+          <label for="column-order"><i class="fas fa-sort"></i> Column Order for ordinal (optional):</label>
+          <div class="custom-file">
+            <input type="file" class="custom-file-input" id="column-order" name="column_order">
+            <label class="custom-file-label" for="column-order" id="column-order-label"><i class="fas fa-file-upload"></i> Choose file</label>
+          </div>
+        </div>
+        
+        <button type="submit" class="btn btn-primary"><i class="fas fa-upload"></i> Upload</button>
+      </form>
+    </div>
+</div>
+</div>
+{% endblock %}

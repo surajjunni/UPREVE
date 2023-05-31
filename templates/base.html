@@ -1,0 +1,489 @@
+<html>
+    <head>
+        <title>
+            Causal GUI
+        </title>
+        <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css">
+	    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.2.1/jquery.min.js"></script>
+	    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js"></script>
+        <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css" integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous">
+        <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/js/bootstrap.bundle.min.js"></script>
+        <!-- <link rel="stylesheet" href="{{ url_for('static',filename='main.css')}}"> -->
+        <script src="https://d3js.org/d3.v7.min.js"></script>
+        <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+       <script>
+
+
+$(document).ready(function() {
+
+
+$('#csv_select').on('change', function() {
+       
+        console.log("csv-table");
+
+        {% if csv_files is not none %}
+            var selected_csv = $(this).val();
+            console.log(selected_csv);
+            $('.csv-table').hide();
+            $('#' + selected_csv).show().find('table tbody').html('');
+
+            {% for csv_file in csv_files %}
+                if (selected_csv == "{{ csv_file[0] }}") {
+                    var csv_data = "{{ csv_file[1] }}";
+                    console.log(csv_data);
+                    csv_data = JSON.parse(csv_data.replace(/&#39;/g,'"')); // replace escaped single quotes with double quotes and parse as JSON
+
+                    var table_body = '';
+                    for (var i = 1; i < csv_data.length; i++) {
+                      table_body += '<tr>';
+                      for (var j = 0; j < csv_data[i].length; j++) {
+                        table_body += '<td>' + csv_data[i][j] + '</td>';
+                      }
+                      table_body += '</tr>';
+                    }
+                    $('#' + selected_csv).find('table tbody').html(table_body);
+                }
+            {% endfor %}
+        {% endif %}
+    });
+
+$("#visualize-form").submit(function(event) {
+   console.log("visualize");
+    $("#loader1").removeClass("hidden");
+  });
+
+$("#metric-form").submit(function(event) {
+   console.log("metric");
+    $("#loader2").removeClass("hidden");
+  });
+
+{% if csv_files %}
+    $("#loader1").addClass("hidden");
+  {% endif %}
+
+  {% if fig_paths %}
+    $("#loader1").addClass("hidden");
+  {% endif %}
+
+    $('#script-form').submit(function(event) {
+    event.preventDefault(); // prevent default form submit action
+    $('#loader1').removeClass('d-none');
+    // get form data
+    var formData = new FormData(this);
+
+    // check if script file is R or Python
+    if ($('#script-file')[0].files[0]) {
+        var inputFile = $('#script-file')[0].files[0];
+        var lang;
+        if (inputFile.type === 'text/x-rsrc' || inputFile.name.endsWith('.zip')) {
+            lang = 'zip';
+        } else {
+            $('#loader1').addClass('d-none'); // hide loader
+            $('#alert-div').html('<div class="alert alert-danger" role="alert">Unsupported file type detected. Please upload a file with .zip extension.</div>');
+            return;
+        }
+    }
+
+    // submit form using AJAX
+    $.ajax({
+        type: 'POST',
+        url: '/save_script',
+        data: formData,
+        processData: false,
+        contentType: false,
+        success: function(response) {
+            $('#loader1').addClass('d-none');
+            $('#alert-div').html('<div class="alert alert-success" role="alert">' + response + '</div>');
+            $('#script-form')[0].reset(); // reset form
+        },
+        error: function(error) {
+            $('#loader1').addClass('d-none');
+            $('#alert-div').html('<div class="alert alert-danger" role="alert">' + error.responseText + '</div>');
+        }
+    });
+});
+
+const datasetInput = document.getElementById('dataset');
+    datasetInput.addEventListener('change', () => {
+        const filePath = datasetInput.value;
+        if (/\.(csv|xlsx)$/i.test(filePath)) {
+            // valid file type
+        } else {
+            alert('Invalid file type. Only CSV and XLSX files are allowed.');
+            datasetInput.value = '';
+        }
+    });
+
+ $(function() {
+    
+ 
+// attach a handler function to the change event 
+$('#json-file').on('change', function() {
+    // get the label element
+    var label = $('#json-file-label');
+    var input = $('#json-file'); 
+
+    // get the file name from the input 
+    var filename = input[0].files[0].name; 
+    // update the label text with the file name 
+    label.text(filename);
+    console.log("where");
+});
+ 
+
+$('#column-order').on('change', function() {
+    // get the label element
+    var label = $('#column-order-label');
+    var input = $('#column-order'); 
+
+    // get the file name from the input 
+    var filename = input[0].files[0].name; 
+    // update the label text with the file name 
+    label.text(filename);
+    console.log("where");
+});
+
+$('#ground-truth').on('change', function() {
+    // get the label element
+    var label = $('#ground-truth-label');
+    var input = $('#ground-truth'); 
+
+    // get the file name from the input 
+    var filename = input[0].files[0].name; 
+    // update the label text with the file name 
+    label.text(filename);
+    console.log("where");
+});
+
+  $('#dataset').on('change', function() {
+    var filename = $(this).val().split('\\').pop();
+    $(this).next('.custom-file-label').addClass('selected').html(filename);
+  });
+  
+  $('#upload-form').submit(function(e) {
+    e.preventDefault();
+    var form_data = new FormData(this);
+    console.log(form_data);
+    $.ajax({
+      type: 'POST',
+      url: '/upload_dataset',
+      data: form_data,
+      processData: false,
+      contentType: false,
+      success: function(data) {
+        $('#message').text('File uploaded successfully');
+        $('#upload-form')[0].reset();
+        $('#dataset').next('.custom-file-label').removeClass('selected').html('Choose file');
+        setTimeout(function() {
+            $('#message').text('');
+            location.reload();
+        }, 3000);
+      },
+      error: function(xhr, status, error) {
+        $('#message').text('File upload failed');
+      }
+    });
+  });
+});
+
+function loadAlgorithmConfig(algorithm) {
+  return new Promise((resolve, reject) => {
+    // Load the algorithm configuration file dynamically
+    const configPath = `script/algorithm/${algorithm}/config.json`;
+    fetch(configPath)
+      .then(response => response.json())
+      .then(config => resolve(config))
+      .catch(error => reject(error));
+  });
+}
+
+function updateParameters() {
+  const algorithmSelect = document.getElementById("algorithm-select");
+  const selectedAlgorithm = algorithmSelect.value;
+  const parametersContainer = document.getElementById("parameters-container");
+
+  // Clear previous parameters
+  parametersContainer.innerHTML = "";
+
+  if (selectedAlgorithm) {
+    loadAlgorithmConfig(selectedAlgorithm)
+      .then(algorithmConfig => {
+        if (algorithmConfig && algorithmConfig.parameters) {
+          algorithmConfig.parameters.forEach(parameter => {
+            const parameterLabel = document.createElement("label");
+            parameterLabel.textContent = parameter.name + ": ";
+            parametersContainer.appendChild(parameterLabel);
+
+            const parameterInput = document.createElement("input");
+            parameterInput.type = "text";
+            parameterInput.value = parameter.default;
+            parametersContainer.appendChild(parameterInput);
+
+            parametersContainer.appendChild(document.createElement("br"));
+          });
+        }
+      })
+      .catch(error => {
+        console.error("Error loading algorithm configuration:", error);
+      });
+  }
+}
+
+
+function myFunc(clicked_id)
+  {
+      
+      if(document.getElementById(clicked_id).value=="checked")
+      {
+       document.getElementById(clicked_id+"1").value="unchecked";
+       //document.getElementById(clicked_id).style.background="white";
+      }
+      else{
+        document.getElementById(clicked_id+"1").value="checked";
+        //document.getElementById(clicked_id).style.background="grey";
+      }
+      //console.log(clicked_id,document.getElementById(clicked_id+"1").value);
+  }
+
+
+
+
+$('#problem-form').on('submit', function(event) {
+        event.preventDefault();
+        $.ajax({
+            url: '/upload_problem_type',
+            type: 'POST',
+            data: $('form').serialize(),
+            success: function(response) {
+                if (response.status === 'success') {
+                    console.log("here");
+                    $('#response').html('Uploaded successfully.').removeClass('text-danger').addClass('text-success');
+                } else {
+                    $('#response').html('Error: ' + response.message).removeClass('text-success').addClass('text-danger');
+                }
+            },
+            error: function(xhr) {
+                $('#response').html('Error: ' + xhr.statusText).removeClass('text-success').addClass('text-danger');
+            }
+        });
+    });
+
+
+
+
+		});
+       </script>
+       <style type="text/css">
+        .algo-section {
+  margin-bottom: 50px;
+}
+
+ .button-container {
+        display: inline-block;
+        white-space: nowrap; /* Prevents the buttons from wrapping to the next line */
+    }
+    .button-container > * {
+        display: inline-block;
+        margin-right: 10px; /* Adds some space between the buttons */
+    }
+
+.algo-section h2 {
+  font-size: 28px;
+  font-weight: bold;
+  margin-bottom: 20px;
+}
+.note{
+  background-color: #f9f9f9;
+  border-left: 6px solid #ccc;
+  margin-bottom: 10px;
+  padding: 10px;
+}
+.algo-section p {
+  font-size: 16px;
+  margin-bottom: 10px;
+}
+
+.algo-section ul {
+  margin-top: 0;
+  padding-left: 20px;
+  list-style: none;
+  font-size: 16px;
+}
+
+.algo-section ul li {
+  margin-bottom: 10px;
+}
+
+.algo-section ul li span {
+  font-weight: bold;
+  margin-right: 5px;
+}
+
+.algo-section ul li span.type {
+  color: #F25F5C;
+}
+
+.algo-section ul li span.default {
+  color: #4D4D4D;
+}
+
+.algo-section ul li span.desc {
+  color: #4D4D4D;
+}
+
+.loader1 {
+  border: 16px solid #f3f3f3;
+  border-top: 16px solid #3498db;
+  border-radius: 50%;
+  width: 20px;
+  height: 20px;
+  animation: spin 2s linear infinite;
+  margin: auto;
+  margin-top: 50px;
+}
+
+.loader2 {
+  border: 16px solid #f3f3f3;
+  border-top: 16px solid #3498db;
+  border-radius: 50%;
+  width: 20px;
+  height: 20px;
+  animation: spin 2s linear infinite;
+  margin: auto;
+  margin-top: 50px;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+
+html, body {
+    max-width: 100%;
+    overflow-x: hidden;
+    background-size: cover;
+    font-family:Cambria;
+    font-size: 9.6pt;
+}
+
+           .output-div {
+    background-color: black;
+    color: white;
+    font-family: monospace;
+    padding: 10px;
+    margin-top: 20px;
+    width: 100%;
+    height: 500px;
+    overflow-y: scroll;
+    margin-bottom: 20px;
+}
+.hidden {
+  display: none;
+}
+.navbar-brand,
+    .nav-link {
+        font-size: 16px;
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
+
+       </style>
+    </head>
+    <body>
+        <div class="m-4">
+    <nav class="navbar navbar-expand-sm navbar-light bg-light">
+        <div class="container-fluid">
+            <a href="/"  style="margin-top:24px; font-size: 15px;" class="navbar-brand">UPREVE</a>
+            <button type="button" class="navbar-toggler" data-bs-toggle="collapse" data-bs-target="#navbarCollapse">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div id="navbarCollapse" class="collapse navbar-collapse">
+                <ul class="nav navbar-nav">
+                    <li class="nav-item">
+                        <a href="/" class="nav-link">Home</a>
+                    </li>
+
+                    <li class="nav-item dropdown">
+                        <a href="#" class="nav-link dropdown-toggle" data-bs-toggle="dropdown">Upload</a>
+                        <div class="dropdown-menu">
+                            <a class="dropdown-item" href="/script_entry">Algo/Metric</a>
+                            <a class="dropdown-item" href="/problem_entry">Problem Type</a>
+                            <a class="dropdown-item" href="/metric_entry">Metrics Mapping</a>
+                            <a class="dropdown-item" href="/data_entry">Data Entry</a>
+                        </div>
+                    </li>
+                    <li class="nav-item dropdown">
+                        <a href="#" class="nav-link dropdown-toggle" data-bs-toggle="dropdown">Details</a>
+                        <div class="dropdown-menu">
+                            <a class="dropdown-item" href="/algorithm">Algorithm Supported</a>
+                            <a class="dropdown-item" href="/metric">Metric Supported</a>
+                            <a class="dropdown-item" href="/dataset">Dataset Supported</a>
+                        </div>
+                    </li>
+                    
+                </ul>
+            </div>
+        </div>
+    </nav>    
+</div>
+    <!-- <nav class="navbar navbar-expand-lg navbar-light bg-light">
+    
+        <nav class="navbar navbar-expand-lg navbar-light bg-light">
+  <div class="container-fluid">
+        <a class="navbar-brand"  style="margin-top:24px; font-size: 15px;" href="/" >Home</a>
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav"
+            aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+   <div class="collapse navbar-collapse" id="navbarNav">
+      <ul class="navbar-nav me-auto">
+        <li class="nav-item dropdown">
+          <a class="nav-link dropdown-toggle" href="#" id="navbarDropdownUpload" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+            Upload
+          </a>
+          <ul class="dropdown-menu" aria-labelledby="navbarDropdownUpload">
+            <li><a class="dropdown-item" href="/script_entry">Algo/Metric</a></li>
+            <li><a class="dropdown-item" href="/problem_entry">Problem Type</a></li>
+            <li><a class="dropdown-item" href="/metric_entry">Metrics Mapping</a></li>
+          </ul>
+        </li>
+        <li class="nav-item dropdown">
+          <a class="nav-link dropdown-toggle" href="#" id="navbarDropdownDetails" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+            Details
+          </a>
+          <ul class="dropdown-menu" aria-labelledby="navbarDropdownDetails">
+            <li><a class="dropdown-item" href="/algorithm">Algorithms Supported</a></li>
+          </ul>
+        </li>
+      </ul>
+      <ul class="navbar-nav">
+        <li class="nav-item">
+          <a class="nav-link" href="/visualize">Visualize</a>
+        </li>
+      </ul>
+    </div>
+  </div>
+</nav>
+    </div>
+</nav> -->
+   <div class="container">
+        <div class="row">
+            <div class="col">
+                {% block content %}
+                {% endblock %}
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/5.0.2/js/bootstrap.min.js"
+        integrity="sha512-CMOWM1d+/uMnmDxDVtSKsYtFLyPQOqlwhI6stV7H0zfpTosVwIu1xNjrvMhYtNQFO2kjk9SoaHJ7V/rgiuy+Bw=="
+        crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <script type="text/javascript">
+     
+    </script>    
+</body>
+
+
+</html>

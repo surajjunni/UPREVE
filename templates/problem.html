@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container">
+    <hr>
+    {% if message=="success" %}
+    <div id="response"><span color="green">{{message}}</span></div>
+    {% elif message =="error" %}
+    <div id="response"><span color="red">{{message}}</span></div>
+    {% endif %}
+    <form method="post"  action="/upload_problem_type">
+        <div class="form-group">
+            <label for="problem-type">Problem:</label>
+            <input type="text" name="problem" id="problem" class="form-control" required>
+
+            <label for="problem-type">Problem Type:</label>
+            <input type="text" name="problem_type" id="problem-type" class="form-control" required>
+        </div>
+        <button type="submit" id="problem-form" class="btn btn-primary">Submit</button>
+    </form>
+</div>
+{% endblock %}

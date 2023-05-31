@@ -1,0 +1,285 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container">
+  <div class="row">
+  <div class="card">
+    <div class="card-body">
+      <h5 class="card-title">Run the Algorithms</h5>
+      <div id="alert-div1"></div>
+      <form action="/upload_json" enctype="multipart/form-data">
+        <div class="form-group">
+          <label for="algorithm-select">Select Algorithm:</label>
+          <select class="js-states form-control" id="algorithm-select" multiple onchange="updateParameters()">
+            {% for algo in alg_name %}
+            <option value="{{ algo }}">{{ algo }}</option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <div id="parameters-div"></div>
+
+        <div class="form-group">
+          <label for="dataset-select">Select Datasets:</label>
+          <select class="form-control" id="dataset-select" name="datasets">
+            {% for dataset in ds %}
+            <option value="{{ dataset }}">{{ dataset }}</option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <button type="button" class="btn btn-primary" id="submit-json">Run</button>
+      </form>
+
+      <div id="loader" class="d-none">
+        <div class="spinner-border" role="status">
+          <span class="sr-only">Loading...</span>
+        </div>
+        <div class="text-center">Loading...</div>
+      </div>
+
+      <hr>
+
+      <div class="down hidden button-container">
+        <div class="alert alert-warning metric_desc hidden" role="alert">
+          <strong>Warning:</strong> No ground truth available for selected dataset. Metrics cannot be evaluated.
+        </div>
+        <br/>
+        <button type="submit" class="btn btn-primary metric-link hidden">
+          <a href="#" id="metric-link" class="btn btn-primary" target="_blank">Metric Evaluation</a>
+        </button>
+        <p>Download the results: here</p>
+        <button type="submit" class="btn btn-primary">
+          <a href="#" id="download-link" class="btn btn-primary">Download</a>
+        </button>
+        <p>Visualize the results here:</p>
+        <button type="submit" class="btn btn-primary">
+          <a href="#" id="visualize-link" class="btn btn-primary" target="_blank">Visualize</a>
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+</div>
+<div class="row">
+  <div class="output-div hidden" style="margin-top: 1%; margin-left: 1%;">
+    <h4>Console:</h4>
+    <pre id="output"></pre>
+    <br/><br/>
+  </div>
+</div>
+
+<script>
+function updateParameters() {
+  // Get the selected algorithms
+  var selectedAlgorithms = Array.from(document.getElementById("algorithm-select").selectedOptions, option => option.value);
+  
+  // Clear the existing parameters
+  var parametersDiv = document.getElementById("parameters-div");
+  parametersDiv.innerHTML = "";
+  
+  // Fetch the parameters for each selected algorithm
+  selectedAlgorithms.forEach(function(algorithm) {
+    fetch('/algorithm/config/' + algorithm)
+      .then(function(response) {
+        return response.json();
+      })
+      .then(function(config) {
+        // Add the parameters to the parametersDiv
+        var algorithmHeading = document.createElement("h4");
+        algorithmHeading.textContent = algorithm + " Parameters";
+        parametersDiv.appendChild(algorithmHeading);
+        
+        if (config.error) {
+          var errorText = document.createElement("p");
+          errorText.textContent = config.error;
+          parametersDiv.appendChild(errorText);
+        } else {
+          var parametersForm = document.createElement("div");
+          parametersForm.setAttribute("id", algorithm + "-div");
+          config.parameters.forEach(function(parameter) {
+            var parameterLabel = document.createElement("label");
+            parameterLabel.textContent = parameter.name + ": ";
+            
+            var parameterInput;
+            
+            // Create the appropriate input field based on parameter type
+            if (parameter.type === "int" || parameter.type === "float") {
+              parameterInput = document.createElement("input");
+              parameterInput.setAttribute("type", "number");
+              parameterInput.setAttribute("name", parameter.name);
+              parameterInput.setAttribute("value", parameter.default);
+              
+              // Set the step value for float type
+              if (parameter.type === "float") {
+                parameterInput.setAttribute("step", "0.1");
+              }
+              
+              // Add event listener to reset value if out of range
+              parameterInput.addEventListener("change", function() {
+                var value = parseFloat(parameterInput.value);
+                if (value < parameter.range[0]) {
+                  parameterInput.value = parameter.range[0];
+                } else if (value > parameter.range[1]) {
+                  parameterInput.value = parameter.range[1];
+                }
+              });
+            } else if (Array.isArray(parameter.range) && parameter.range.length > 1 && typeof parameter.range[0] === "string") {
+              parameterInput = document.createElement("select");
+              parameterInput.setAttribute("name", parameter.name);
+
+              parameter.range.forEach(function(option) {
+                var optionElement = document.createElement("option");
+                optionElement.setAttribute("value", option);
+                optionElement.textContent = option;
+                parameterInput.appendChild(optionElement);
+              });
+            } else {
+              parameterInput = document.createElement("input");
+              parameterInput.setAttribute("type", "text");
+              parameterInput.setAttribute("name", parameter.name);
+              parameterInput.setAttribute("value", parameter.default);
+            }
+            
+            // Add range constraint as a placeholder hint if available
+            if (Array.isArray(parameter.range)) {
+              if (parameter.range.length === 2 && typeof parameter.range[0] === "number" && typeof parameter.range[1] === "number") {
+                parameterInput.setAttribute("placeholder", "Range: " + parameter.range[0] + " - " + parameter.range[1]);
+              } else if (parameter.range.length > 1 && typeof parameter.range[0] === "string") {
+                parameterInput.setAttribute("placeholder", "Options: " + parameter.range.join(", "));
+              }
+            }
+            
+            var parameterDiv = document.createElement("div");
+            parameterDiv.classList.add("form-group"); // Add Bootstrap class for form group
+            parameterDiv.appendChild(parameterLabel);
+            parameterDiv.appendChild(parameterInput);
+            var parameterDescription = document.createElement("p");
+            parameterDescription.textContent = parameter.description;
+            parameterDiv.appendChild(parameterDescription);
+            parametersForm.appendChild(parameterDiv);
+          });
+          parametersForm.style.width = "100%"; // Set the width to 100% of the parent container
+parametersForm.style.display = "flex"; // Use flexbox for layout
+parametersForm.style.alignItems = "center"; // Align items vertically in the center
+parametersForm.style.justifyContent = "flex-start"; // Start items from the left side
+parametersForm.style.flexWrap = "wrap"; // Wrap items to the next line if needed
+
+for (var i = 0; i < parametersForm.children.length; i++) {
+  var child = parametersForm.children[i];
+  if (child.tagName === "DIV") {
+    child.style.marginRight = "20px"; // Add some spacing between each parameter
+  }
+}
+          parametersDiv.appendChild(parametersForm);
+        }
+      })
+      .catch(function(error) {
+        console.log('Error:', error);
+      });
+  });
+}
+$('#algorithm-select').select2({
+    placeholder: 'Select an algorithm',
+  });
+
+$('#submit-json').click(function() {
+  
+  
+  $('#loader').removeClass('d-none');
+  var form_data = new FormData();
+  var selected_datasets = $('#dataset-select').val();
+  var selected_algorithm = $('#algorithm-select').val();
+  
+  console.log(selected_datasets);
+  form_data.append('datasets', selected_datasets);
+  form_data.append('algorithm', selected_algorithm);
+  
+  // Get the values of the input fields
+  var algorithmForms = document.querySelectorAll('#parameters-div > div');
+  algorithmForms.forEach(function(div) {
+    var algorithmName = div.getAttribute('id').replace('-div', '');
+    
+    var parameterInputs = div.querySelectorAll('input, select');
+    parameterInputs.forEach(function(input) {
+      var parameterName = input.getAttribute('name');
+      var parameterValue = input.value;
+      form_data.append('parameters[' + algorithmName + '][' + parameterName + ']', parameterValue);
+    });
+  });
+  
+  // get the selected radio button value
+ 
+  $.ajax({
+    url: '/upload_json',
+    type: 'POST',
+    data: form_data,
+    contentType: false,
+    processData: false,
+    success: function(response) {
+      var results = response;
+      console.log(results);
+      var success_msg = '';
+      var error_msg = '';
+      if ( results['success']) {
+        msg= results['output'];
+        filename=results["result"];
+        flag=results["flag"];
+      }
+      if (results['error']) {
+        msg = results['error'];
+      }
+      
+      $('#loader').addClass('d-none');
+      // display the output
+      $('.output-div').removeClass('hidden');
+      $('#output').empty();
+  //console.log("output",data);
+  
+   if ( results['success']) {
+    var downloadLink = $('#download-link');
+
+// Set the href attribute of the download link to the zip filepath
+downloadLink.attr('href', filename);
+var dLink = $('#visualize-link');
+var dLink1 = $('.metric-link');
+var dLink2 = $('#metric-link');
+var dLink3 = $('.metric_desc');
+console.log("flag",flag);
+// Set the href attribute of the download link to the zip filepath
+if (flag == "True") {
+    console.log("metric");
+    dLink1.removeClass('hidden');
+    dLink3.addClass('hidden');
+  } else {
+    dLink1.addClass('hidden');
+    dLink3.removeClass('hidden');
+  }
+dLink.attr('href', "visualize/"+filename);
+dLink2.attr('href', "metric/"+filename);
+$('.down').removeClass('hidden');
+  $('#alert-div1').html('<div class="alert alert-success" role="alert">Success</div>');
+}
+else{
+     $('#alert-div1').html('<div class="alert alert-danger" role="alert">Failed.Check the console logs.</div>');
+}
+  //$('#output').append('<p style="color:green;">' + "Success"+ '</p>');
+  for (var i = 0; i < msg.length; i++) {
+    $('#output').append('<p>' + msg[i] + '</p>');
+  }
+    },
+    error: function() {
+       $('.output-div').removeClass('hidden');
+      $('#output').empty(); 
+      $('#loader').addClass('d-none');
+      $('#alert-div1').html('<div class="alert alert-danger" role="alert">Failed.Check the console logs.</div>');
+      for (var i = 0; i < msg.length; i++) {
+    $('#output').append('<p>' + msg[i] + '</p>');
+  }
+      //$('#output').append('<p>' + "Error uploading file"  + '</p>')
+      
+    }
+  });
+});
+</script>
+
+{% endblock %}

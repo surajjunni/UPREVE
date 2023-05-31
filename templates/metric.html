@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container">
+    <hr>
+    <form method="post" action="{{ url_for('upload_metrics') }}" enctype="multipart/form-data">
+    <div class="form-group">
+        <label for="problem-type-select">Problem Type:</label>
+        <select class="form-control" id="problem-type-select" name="problem_type">
+            {% for row in problem_types %}
+            <option>{{ row[0] }}</option>
+            {% endfor %}
+        </select>
+    </div>
+    <div class="form-group">
+        <label for="metric-name-select">Metric Name:</label>
+        <select class="form-control" id="metric-name-select" name="metric_name">
+            {% for row in metric_names %}
+            <option>{{ row[0] }}</option>
+            {% endfor %}
+        </select>
+    </div>
+    <button type="submit" class="btn btn-primary">Upload Metrics</button>
+    </form>
+    <div id="result"></div>
+</div>
+<script>
+    $(document).ready(function() {
+        $('form').submit(function(event) {
+            event.preventDefault();
+            $.ajax({
+                type: 'POST',
+                url: '/upload_metrics',
+                data: $('form').serialize(),
+                success: function(response) {
+                    $('#result').html('<div class="alert alert-success">' + response + '</div>');
+                },
+                error: function(error) {
+                    $('#result').html('<div class="alert alert-danger">' + error.responseText + '</div>');
+                }
+            });
+        });
+    });
+</script>
+{% endblock %}

@@ -1,0 +1,276 @@
+{% extends "base.html" %}
+
+{% block content %}
+    <div class="container">
+        <h1 class="my-4">Visualize the Results</h1>
+        <form method="POST" action="/visualization" enctype="multipart/form-data" id="visualize-form">
+            <input type="hidden" name="file_path" value={{extras}}>
+            <div class="form-group">
+                <label for="visualization">Visualization:</label>
+                <select id="visualization" name="visualization" class="form-control">
+                    <option value="heatmap">Heatmap</option>
+                    <option value="directed-graph">Directed Graph</option>
+                </select>
+            </div>
+            <button type="submit" class="btn btn-primary" >Visualize</button>
+        </form>
+        <div id="loader1" class="loader1 hidden"></div>
+        {% if fig_paths %}
+            <a href={{result}}>Download Results</a>
+            {% for i in range(fig_paths|length) %}
+                <div class="row mt-4">
+                    <div class="col-md-6">
+                        <div class="card">
+                            <div class="card-header">
+                                Dataset: {{ dataset }}
+                           </div>
+                            <div class="card-body">
+                                {% if visualization_type=="directed-graph" %}
+                                <h5 class="card-title">Figure {{ fig_paths[i].split('/')[-1] }}</h5>
+                                {% else %}
+                                <h5 class="card-title">Figure {{ fig_paths[i][0].split('/')[-1] }}</h5>
+                                {% endif %}
+                                <h5>Config:</h5>
+                                {% if settings == "normal" %}
+                                <p>{{ config[i]['algorithm_name'] }}:</p>
+                                <ul>
+                                  {% for parameter in config[i]['parameters'] %}
+                                      <li>{{ parameter['name'] }}: {{ parameter['value'][0] }}</li>
+                                  {% endfor %}
+                              </ul>
+                                {% else %}
+                                <p>{{ config[0]['algorithm_name'] }}:</p>
+                                <ul>
+                                    {% for parameter in config[0]['parameters'] %}
+                                        <li>{{ parameter['name'] }}: {{ parameter['value'][i] }}</li>
+                                    {% endfor %}
+                                </ul>
+                                {% endif %}
+                                {% if meta_info[i].get("Column names") %}
+    <h5>Column Names:</h5>
+    <p>{{ meta_info[i]["Column names"]|join(", ") }}</p>
+    <h5>Outlier Columns:</h5>
+    <p>{{ meta_info[i]["outlier columns"]|join(", ") }}</p>
+    <h5>Clusters:</h5>
+     <h5>Strongest and Weakest Variables:</h5>
+    <table style="font-size: 1.2rem;font-weight: bold;">
+  <thead>
+    <tr>
+      <th style="border: 1px solid black;">Variable</th>
+      <th style="border: 1px solid black;">Least Correlated Variable</th>
+      <th style="border: 1px solid black;">Strongest Correlated Variable</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for variable, correlations in meta_info[i]["strongest and weakest variables"].items() %}
+    <tr>
+      <td style="border: 1px solid black;">{{ variable }}</td>
+      <td style="border: 1px solid black;">{{ correlations["least_correlated_variable"] }}</td>
+      <td style="border: 1px solid black;">{{ correlations["strongest_correlated_variable"] }}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% elif meta_info[i].get("Node labels") %}
+    <h5>Node Labels:</h5>
+<p>{{ meta_info[i]["Node labels"]|join(", ") }}</p>
+    <h5>Number of Edges:</h5>
+    <p>{{ meta_info[i]["Number of edges"] }}</p>
+    <h5>Density of the Directed Graph:</h5>
+    <p>{{ meta_info[i]["Desnsity of the directed graph"] }}</p>
+    <h5>Causes List:</h5>
+    <table style="font-size: 1.2rem;font-weight: bold;">
+    <thead>
+        <tr>
+            <th style="border: 1px solid black;">Variable</th>
+            <th style="border: 1px solid black;">Causes</th>
+        </tr>
+    </thead>
+    <tbody>
+    {% for variable, causes_list in meta_info[i]["causes list"].items() %}
+        <tr>
+            <td style="border: 1px solid black;">{{ variable }}</td>
+            <td style="border: 1px solid black;">
+                {% if causes_list %}
+                    {{ causes_list|join(", ") }}
+                {% else %}
+                    None
+                {% endif %}
+            </td>
+        </tr>
+    {% endfor %}
+    </tbody>
+</table>
+
+{% endif %}
+
+                            </div>
+                        </div>
+                    </div>
+                    {% if meta_info[i].get("Node labels") %}
+    <div class="col-md-6">
+        <svg id="my-svg{{i}}"width="960" height="600"></svg>
+        
+        <script>
+var csvPath = "{{fig_paths[i]}}";
+var path = "/causal-matrix/" + csvPath;
+console.log(path);
+d3.json(path).then(function(data) {
+  console.log(data);
+
+  // Define the links (edges) between nodes
+  var links = data.map(function(d) {
+    if (d.value > 0) {
+      // add this if statement to filter out links with value 0
+      return {
+        source: d.source,
+        target: d.target,
+        value: +d.value
+      };
+    }
+  }).filter(function(d) {
+    return d !== undefined
+  });
+
+  var nodes = {};
+  // Define the nodes
+  links.forEach(function(link) {
+    if (!nodes[link.source]) {
+      nodes[link.source] = {
+        id: link.source,
+        group: 1
+      };
+    }
+    if (!nodes[link.target]) {
+      nodes[link.target] = {
+        id: link.target,
+        group: 1
+      };
+    }
+  });
+
+  var nodeNames = Object.values(nodes);
+
+  console.log(nodeNames, links);
+
+  var width = 960; // Define the width of the SVG container
+  var height = 600; // Define the height of the SVG container
+
+  var svg = d3.select("#my-svg{{i}}"); 
+
+  var simulation = d3.forceSimulation(nodeNames)
+    .force('charge', d3.forceManyBody().strength(-500))
+    .force('center', d3.forceCenter(width / 2, height / 2))
+    .force('link', d3.forceLink().links(links).id(function(d) { return d.id; })) // Specify the 'id' accessor for links
+    .on('tick', ticked);
+
+  var link = svg.append("g")
+    .attr("class", "links")
+    .selectAll("line")
+    .data(links)
+    .enter().append("line")
+    .attr("stroke-width", 3)
+    .style("stroke", "gray") // Set the color of the links
+    .attr("marker-end", "url(#arrowhead)"); // Add arrowhead marker to the links
+
+  // Define the arrowhead marker
+  svg.append("defs").append("marker")
+    .attr("id", "arrowhead")
+    .attr("viewBox", "-10 -10 20 20")
+    .attr("refX", 18) // X-coordinate of the arrowhead
+    .attr("markerWidth", 8)
+    .attr("markerHeight", 8)
+    .attr("orient", "auto")
+    .append("path")
+    .attr("d", "M0,-5L10,0L0,5") // Path of the arrowhead shape
+    .style("fill", "gray"); // Color of the arrowhead
+
+  var node = svg.append("g")
+    .attr("class", "nodes")
+    .selectAll("circle")
+    .data(nodeNames)
+    .enter().append("circle")
+    .attr("r", 15)
+    .style("fill", "blue")
+    .call(drag(simulation));// Set the color of the nodes
+
+  var text = svg.append("g")
+    .attr("class", "labels")
+  .selectAll("text")
+    .data(nodeNames)
+  .enter().append("text")
+    .attr("dx", 12)
+    .attr("dy", ".35em")
+    .text(function(d) { return d.id });
+
+  function ticked() {
+    link
+      .attr("x1", function(d) {
+        return d.source.x;
+      })
+      .attr("y1", function(d) {
+        return d.source.y;
+      })
+      .attr("x2", function(d) {
+        return d.target.x;
+      })
+      .attr("y2", function(d) {
+        return d.target.y;
+      });
+
+    d3.selectAll("circle").attr("cx", function (d) {
+        return d.x;
+    })
+        .attr("cy", function (d) {
+        return d.y;
+    });
+
+    d3.selectAll("text").attr("x", function (d) {
+        return d.x;
+    })
+        .attr("y", function (d) {
+        return d.y;
+    });
+  }
+
+ function drag(simulation) {    
+    function dragstarted(event) {
+      if (!event.active) simulation.alphaTarget(0.3).restart();
+      event.subject.fx = event.subject.x;
+      event.subject.fy = event.subject.y;
+    }
+    
+    function dragged(event) {
+      event.subject.fx = event.x;
+      event.subject.fy = event.y;
+    }
+    
+    function dragended(event) {
+      if (!event.active) simulation.alphaTarget(0);
+      event.subject.fx = null;
+      event.subject.fy = null;
+    }
+    
+    return d3.drag()
+      .on("start", dragstarted)
+      .on("drag", dragged)
+      .on("end", dragended);
+  }
+
+  });
+
+
+        </script>
+    </div>
+{% else %}
+    <div class="col-md-6">
+        <img src="{{ fig_paths[i][0] }}" class="img-fluid">
+    </div>
+{% endif %}
+
+                </div>
+            {% endfor %}
+        {% endif %}
+    </div>
+    
+{% endblock %}

@@ -1,0 +1,118 @@
+{% extends "base.html" %}
+
+{% block content %}
+  <div class="container">
+    <h1 class="my-4">Evaluate the Results</h1>
+    <form method="POST" action="/metrics_evaluate" enctype="multipart/form-data" id="metric-form">
+      <input type="hidden" name="file_path" value={{extras}}>
+      <div class="form-group">
+<div class="row" style="background: white; border-radius: 10px; padding: 15px; border-color: black; border-style: solid; border-width: 2px;">
+     <!-- <input type="checkbox" name="fil" name="fil1"> -->
+     {% for key,result in metric.items() %}
+        
+    <div class=" col-sm-4 form-check">
+  <!-- <input class="form-check-input" type="checkbox" id="attribute" id={{result}}> -->
+  {% if result=="unchecked" %}
+  <input type="checkbox" name={{key}}  onClick="myFunc(this.id)" >
+  {% else %} 
+  <input type="checkbox" name="{{key}}"  checked onClick="myFunc(this.id)">
+  {% endif %}
+  <label class="form-check-label" style="font-size: 15px;" for="flexCheckDefault">
+    {{ key|replace('_', ' ') }}
+  </label>
+</div>
+{% endfor %}
+</div>
+</div>
+      <button type="submit" class="btn btn-primary">Evaluate</button>
+    </form>
+    <div id="loader2" class="loader2 hidden"></div>
+    {% if csv_files %}
+    <a href="{{ result }}">Download Metric Results</a>
+      <hr>
+      <h4>Configuration:</h4>
+      <ul>
+        {% for item in config %}
+          <li><strong>Algorithm Name:{{ item.algorithm_name }}</strong></li>
+          <strong>Parameters used for {{ item.algorithm_name }}</strong>
+          <ul>
+            {% for param in item.parameters %}
+              <li>{{ param.name }}: {{ param.value|join(", ") }}</li>
+            {% endfor %}
+          </ul>
+        {% endfor %}
+      </ul>
+      <hr>
+      <h4>Dataset Name:</h4>
+      <p>{{dataset}}</p>
+      <hr>
+  <div class="form-group">
+    <label for="csv_select">Select the metric to display:</label>
+    <select id="csv_select" class="form-control">
+      {% for csv_file in csv_files %}
+        <option value="{{ csv_file[0] }}">{{ csv_file[0] }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <hr>
+  {% for csv_file in csv_files %}
+    <div id="{{ csv_file[0] }}" class="csv-table" {% if not loop.first %}  style="display: None;" {% endif %}>
+      <h2>{{ csv_file[0] }}</h2>
+      <table class="table table-bordered">
+        <thead>
+          <tr>
+            {% for header in csv_file[1][0] %}
+              <th>{{ header }}</th>
+            {% endfor %}
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in csv_file[1][1:] %}
+            <tr>
+              {% for col in row %}
+                <td>{{ col }}</td>
+              {% endfor %}
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  {% endfor %}
+{% endif %}
+  </div>
+{% endblock %}
+
+{% block scripts %}
+  <script>
+    $(document).ready(function() {
+      $('#result_select').on('change', function() {
+    console.log("csv-table");
+    var selected_csv = $(this).val();
+    $('.csv-table').hide();
+    $('#' + selected_csv).show().find('table tbody').html('');
+
+    var csv_data = null;
+    for (var i = 0; i < csv_files.length; i++) {
+      if (csv_files[i][0] == selected_csv) {
+        csv_data = csv_files[i][1];
+        break;
+      }
+    }
+    
+    if (csv_data) {
+      var table_body = '';
+      for (var i = 1; i < csv_data.length; i++) {
+        table_body += '<tr>';
+        for (var j = 0; j < csv_data[i].length; j++) {
+          table_body += '<td>' + csv_data[i][j] + '</td>';
+        }
+        table_body += '</tr>';
+      }
+      $('#' + selected_csv).find('table tbody').html(table_body);
+    }
+  });
+
+    });
+  </script>
+
+  {% endblock %}

@@ -1,0 +1,9 @@
+[  {    "algorithm_name": "PC",    "parameters": [      {        "name": "alpha",        "value": [0.01,0.02]
+      },
+      {
+        "name": "variant",
+        "value": ["original","original"]
+      }
+    ]
+  }
+]

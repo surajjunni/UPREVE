@@ -1,0 +1,23 @@
+{% macro render_node(item) %}
+  {% for key, value in item.items() %}
+    <li>
+      <strong>{{ key }}:</strong>
+      {% if value is mapping %}
+        <ul>
+          {{ render_node(value) }}
+        </ul>
+      {% elif value is sequence %}
+        <ul>
+          {% for subitem in value %}
+            {{ render_node(subitem) }}
+          {% endfor %}
+        </ul>
+      {% else %}
+        {{ value }}
+      {% endif %}
+    </li>
+  {% endfor %}
+{% endmacro %}
+
+{% call render_node(config) %}
+{% endcall %}

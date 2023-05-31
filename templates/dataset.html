@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+
+{% block content %}
+ <div class="container">
+        <h1>Dataset Information</h1>
+        {% for file_info in dataset_info %}
+            <div class="card">
+                <div class="card-header">
+                    {{ file_info['filename'] }}
+                </div>
+                <div class="card-body">
+                    <h5 class="card-title">Shape: {{ file_info['shape'] }}</h5>
+                    <h5 class="card-title">Column Names:</h5>
+                    <ul>
+                        {% for column_name in file_info['column_names'] %}
+                            <li>{{ column_name }}</li>
+                        {% endfor %}
+                    </ul>
+                    <h5 class="card-title">Additional Information:</h5>
+                    {% if file_info['has_ground_truth']==True %}
+                        <p>Ground Truth: Yes</p>
+                    {% else %}
+                        <p>Ground Truth: No</p>
+                    {% endif %}
+                    {% if file_info['has_order']==True %}
+                        <p>Order: Yes</p>
+                    {% else %}
+                        <p>Order: No</p>
+                    {% endif %}
+                </div>
+            </div>
+        {% endfor %}
+    </div>
+
+{% endblock %}    

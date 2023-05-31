@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% block content %}
+  <div class="row">
+    <div class="col-md-4">
+      <h2>Metrics Configuration Documentation</h2>
+      <ul class="nav nav-pills flex-column">
+        {% for algorithm in algorithms %}
+        <li class="nav-item">
+          <a class="nav-link" href="#{{ algorithm.name }}">{{ algorithm.name }}</a>
+        </li>
+        {% endfor %}
+      </ul>
+    </div>
+    <div class="col-md-8">
+      {% for algorithm in algorithms %}
+      <section id="{{ algorithm.name }}">
+        <h2>{{ algorithm.name }}</h2>
+        <h6>{{ algorithm.description}}</h6>
+        <div class="row">
+          <div class="col-md-6">
+            <p><strong>Script Language:</strong> {{ algorithm.script_lang }}</p>
+            <h4>Configuration Parameters</h4>
+            <ul>
+              {% for param in algorithm.parameters %}
+              
+              <li>
+                <p><strong>{{ param.name }}:</strong></p>
+                <ul>
+                  <li><strong>Type:</strong> {{ param.type }}</li>
+                  <li><strong>Required:</strong> {{ 'Yes' if param.required else 'No' }}</li>
+                  <li><strong>Default:</strong> {{ param.default }}</li>
+                  <li><strong>Description:</strong> {{ param.description }}</li>
+                  <li><strong>Range:</strong> {{ param.range }}</li>
+                </ul>
+              </li>
+                            {% endfor %}
+            </ul>
+          </div>
+        </div>
+      </section>
+      {% endfor %}
+    </div>
+  </div>
+{% endblock %}
